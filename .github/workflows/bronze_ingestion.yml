@@ -44,55 +44,6 @@ jobs:
         continue-on-error: true
 
       # -------------------------------------------------------------------
-      # ADP CSV — enable once SFTP credentials and file patterns confirmed
-      # -------------------------------------------------------------------
-      - name: Run ADP CSV ingestion
-        env:
-          ADP_SFTP_HOST: ${{ secrets.ADP_SFTP_HOST }}
-          ADP_SFTP_USER: ${{ secrets.ADP_SFTP_USER }}
-          ADP_SFTP_PASSWORD: ${{ secrets.ADP_SFTP_PASSWORD }}
-          FABRIC_ACCOUNT_URL: ${{ secrets.FABRIC_ACCOUNT_URL }}
-          FABRIC_FILE_SYSTEM: ${{ secrets.FABRIC_FILE_SYSTEM }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-        run: python ingest_adp_csv.py
-        continue-on-error: true
-
-      # -------------------------------------------------------------------
-      # NetSuite — enable once JDBC driver and credentials arrive
-      # -------------------------------------------------------------------
-      - name: Run NetSuite ingestion
-        env:
-          NETSUITE_USER: ${{ secrets.NETSUITE_USER }}
-          NETSUITE_PASSWORD: ${{ secrets.NETSUITE_PASSWORD }}
-          FABRIC_ACCOUNT_URL: ${{ secrets.FABRIC_ACCOUNT_URL }}
-          FABRIC_FILE_SYSTEM: ${{ secrets.FABRIC_FILE_SYSTEM }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-        run: python ingest_netsuite.py
-        continue-on-error: true
-
-      # -------------------------------------------------------------------
-      # Jan-IT MySQL — enable once credentials arrive
-      # Pass source name as arg so it reads config/janit.yaml
-      # -------------------------------------------------------------------
-      - name: Run Jan-IT MySQL ingestion
-        env:
-          MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
-          MYSQL_USER: ${{ secrets.MYSQL_USER }}
-          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
-          FABRIC_ACCOUNT_URL: ${{ secrets.FABRIC_ACCOUNT_URL }}
-          FABRIC_FILE_SYSTEM: ${{ secrets.FABRIC_FILE_SYSTEM }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-        run: python ingest_mysql.py janit
-        continue-on-error: true
-
-      # -------------------------------------------------------------------
       # Commit updated state file back to repo so watermarks persist
       # [skip ci] prevents this commit from triggering another workflow run
       # -------------------------------------------------------------------
