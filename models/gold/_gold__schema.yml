@@ -1,0 +1,35 @@
+# Gold layer — canonical domain entities
+# Full column-level documentation is in each domain subfolder _schema.yml
+# All canonical_id fields carry not_null + unique tests (except source_entity_map — see _resolution__schema.yml)
+# Phase annotations match PHASES.md at repo root
+
+version: 2
+
+# This file intentionally references models at the top level only.
+# Per-domain schema files contain full column documentation.
+#
+# Model index:
+#
+# D1 — Customers & Locations (Phase 02) → d1_customers/_d1_customers__schema.yml
+#   - dim_client              Canonical client dimension. Deduplicates customers across all source systems.
+#   - dim_service_location    Canonical service location dimension. Resolves same physical site across source systems.
+#
+# D2 — Contracts & Revenue (Phase 02) → d2_contracts/_d2_contracts__schema.yml
+#   - fct_contract            Reconstructed canonical contract fact. NetSuite has no native contracts table.
+#   - fct_invoice             Canonical invoice fact. Resolves TRANSACTION.created_from_id back to fct_work_order.
+#   - fct_invoice_line        Line-level detail for canonical invoices. Includes GL account and department mapping.
+#
+# D3 — Work Orders (Phase 02 core, Phase 03 extended) → d3_work_orders/_d3_work_orders__schema.yml
+#   - fct_work_order          Neutral canonical work order abstraction (Jan-IT, ServiceChannel, UtilizeCore, Springshot).
+#   - fct_work_order_line     Line-level detail for canonical work orders.
+#
+# D4 — Workforce (Phase 02) → d4_workforce/_d4_workforce__schema.yml
+#   - dim_employee            Canonical employee dimension. ADP is sole authoritative source.
+#   - dim_site_assignment     STUB ONLY — do not populate until ADP scheduling adoption confirmed.
+#   - fct_labour_entry        Canonical labour entry fact. Hours worked vs hours billed for pay-by-hour margin.
+#
+# D5 — Financials (Phase 02 NetSuite, Phase 04 EBS conditional) → d5_financials/_d5_financials__schema.yml
+#   - fct_gl_entry            Event-based canonical GL entry. NetSuite live + EBS historical (conditional Phase 04).
+#
+# Resolution — Entity Resolution Backbone (Phase 01 schema, Phase 02/03 population) → resolution/_resolution__schema.yml
+#   - source_entity_map       Maps every source system identifier to a canonical ID. PK is map_id, not canonical_id.

@@ -1,0 +1,78 @@
+name: tfg_datawarehouse
+version: '1.0.0'
+config-version: 2
+
+profile: tfg_datawarehouse
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - target
+  - dbt_packages
+
+models:
+  tfg_datawarehouse:
+
+    bronze:
+      +materialized: table
+      +schema: bronze
+      netsuite:
+        +tags: ["bronze", "netsuite", "phase_02"]
+      adp:
+        +tags: ["bronze", "adp", "phase_02"]
+      janit:
+        +tags: ["bronze", "janit", "phase_02"]
+      servicechannel:
+        +tags: ["bronze", "servicechannel", "phase_03"]
+      utilizecore:
+        +tags: ["bronze", "utilizecore", "phase_03"]
+      springshot:
+        +tags: ["bronze", "springshot", "phase_03"]
+      ebs:
+        +tags: ["bronze", "ebs", "phase_04", "conditional"]
+        +meta:
+          conditional: true
+          note: "Phase 04 only — one-time historical extract. Do not build until EBS migration confirmed."
+
+    silver:
+      +materialized: table
+      +schema: silver
+      netsuite:
+        +tags: ["silver", "netsuite", "phase_02"]
+      adp:
+        +tags: ["silver", "adp", "phase_02"]
+      janit:
+        +tags: ["silver", "janit", "phase_02"]
+      servicechannel:
+        +tags: ["silver", "servicechannel", "phase_03"]
+      utilizecore:
+        +tags: ["silver", "utilizecore", "phase_03"]
+      springshot:
+        +tags: ["silver", "springshot", "phase_03"]
+      ebs:
+        +tags: ["silver", "ebs", "phase_04", "conditional"]
+        +meta:
+          conditional: true
+          note: "Phase 04 only — one-time historical extract. Do not build until EBS migration confirmed."
+
+    gold:
+      +materialized: table
+      +schema: gold
+      +tags: ["gold"]
+      d1_customers:
+        +tags: ["gold", "d1_customers", "phase_02"]
+      d2_contracts:
+        +tags: ["gold", "d2_contracts", "phase_02"]
+      d3_work_orders:
+        +tags: ["gold", "d3_work_orders", "phase_02"]
+      d4_workforce:
+        +tags: ["gold", "d4_workforce", "phase_02"]
+      d5_financials:
+        +tags: ["gold", "d5_financials", "phase_02"]
+      resolution:
+        +tags: ["gold", "resolution", "phase_01"]

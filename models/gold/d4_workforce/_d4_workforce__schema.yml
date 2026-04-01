@@ -1,0 +1,144 @@
+version: 2
+
+models:
+  - name: dim_employee
+    description: "Canonical employee dimension. ADP is the sole authoritative source (WinTeam removed from scope). Four matching signals used for entity resolution against other systems: first_name, last_name, hire_date, email."
+    columns:
+      - name: canonical_id
+        description: "Surrogate canonical key — generated in dbt using dbt_utils.generate_surrogate_key."
+        tests:
+          - not_null
+          - unique
+      - name: first_name
+        description: "Employee first name. Matching signal 1 for entity resolution."
+        tests:
+          - not_null
+      - name: last_name
+        description: "Employee last name. Matching signal 2 for entity resolution."
+        tests:
+          - not_null
+      - name: hire_date
+        description: "Hire date. Matching signal 3 for entity resolution."
+      - name: email
+        description: "Work email address. Matching signal 4 for entity resolution."
+      - name: employee_code
+        description: "ADP worker ID."
+      - name: full_name
+        description: "Full display name."
+      - name: employment_status
+        description: "Current employment status."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['ACTIVE', 'TERMINATED', 'LEAVE', 'CONTRACTOR']
+      - name: employment_type
+        description: "FULL_TIME | PART_TIME."
+      - name: job_title
+        description: "Job title."
+      - name: department
+        description: "Department."
+      - name: subsidiary
+        description: "Subsidiary."
+      - name: division
+        description: "Business division."
+      - name: pay_rate_type
+        description: "HOURLY | SALARY."
+      - name: pay_rate
+        description: "Pay rate amount."
+      - name: source_path
+        description: "ADP ingestion path — csv | api. Required for stg_adp__workers.sql dual-path logic."
+      - name: primary_source_system
+        description: "Source system that is authoritative for this employee record. Always adp."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['adp']
+      - name: primary_source_id
+        description: "ADP worker ID — source system PK value."
+        tests:
+          - not_null
+      - name: is_active
+        description: "Whether the employee record is currently active. Defaults to true."
+        tests:
+          - not_null
+      - name: termination_date
+        description: "Termination date. Null for active employees."
+      - name: created_at
+        description: "Record creation timestamp."
+        tests:
+          - not_null
+      - name: updated_at
+        description: "Record last-updated timestamp."
+        tests:
+          - not_null
+      - name: dbt_loaded_at
+        description: "Timestamp when dbt last wrote this row."
+        tests:
+          - not_null
+
+  - name: dim_site_assignment
+    # DO NOT POPULATE: No system of record for site assignments. Pending ADP scheduling adoption decision with Keaton/Zeel
+    description: "STUB ONLY — No system of record for site assignments. ADP scheduling module exists but is not adopted. Do not populate until adoption is confirmed with Keaton/Zeel. Labour optimisation model depends on this — structural gap."
+    columns:
+      - name: canonical_id
+        description: "Surrogate canonical key — generated in dbt using dbt_utils.generate_surrogate_key."
+        tests:
+          - not_null
+          - unique
+
+  - name: fct_labour_entry
+    description: "Canonical labour entry fact from ADP. Captures hours worked vs hours billed per employee per day — critical for pay-by-hour contract margin management. ADP is the sole source."
+    columns:
+      - name: canonical_id
+        description: "Surrogate canonical key — generated in dbt using dbt_utils.generate_surrogate_key."
+        tests:
+          - not_null
+          - unique
+      - name: employee_canonical_id
+        description: "FK to dim_employee."
+        tests:
+          - not_null
+      - name: work_order_canonical_id
+        description: "FK to fct_work_order."
+      - name: service_location_id
+        description: "FK to dim_service_location."
+      - name: contract_canonical_id
+        description: "FK to fct_contract."
+      - name: entry_date
+        description: "Date of the labour entry."
+        tests:
+          - not_null
+      - name: hours_worked
+        description: "Actual hours worked."
+        tests:
+          - not_null
+      - name: hours_billed
+        description: "Hours billed to client. May differ from hours_worked on pay-by-hour contracts."
+      - name: pay_rate
+        description: "Hourly pay rate at time of entry."
+      - name: labour_cost
+        description: "Computed labour cost (hours_worked × pay_rate)."
+      - name: labour_type
+        description: "REGULAR | OVERTIME | HOLIDAY."
+      - name: pay_period_start
+        description: "Start date of the pay period containing this entry."
+      - name: pay_period_end
+        description: "End date of the pay period containing this entry."
+      - name: primary_source_system
+        description: "Source system that is authoritative for this labour entry. Always adp."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['adp']
+      - name: primary_source_id
+        description: "Source system PK value."
+        tests:
+          - not_null
+      - name: created_at
+        description: "Record creation timestamp."
+        tests:
+          - not_null
+      - name: dbt_loaded_at
+        description: "Timestamp when dbt last wrote this row."
+        tests:
+          - not_null

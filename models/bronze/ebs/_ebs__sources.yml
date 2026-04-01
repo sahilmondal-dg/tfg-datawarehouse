@@ -1,0 +1,13 @@
+# CONDITIONAL: Phase 04 only. Do not build until EBS migration confirmed.
+
+version: 2
+
+sources:
+  - name: ebs
+    schema: bronze
+    database: "{{ env_var('DBT_DATABASE') }}"
+    description: "ebs raw source — landed by ingest_ebs.py. No transformations applied."
+    tables:
+      # TODO: replace with real table names on Day 1 of access
+      - name: _placeholder
+        description: "Raw _placeholder table from ebs."

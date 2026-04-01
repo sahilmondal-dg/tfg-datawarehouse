@@ -1,0 +1,128 @@
+version: 2
+
+models:
+  - name: dim_client
+    description: "Canonical client dimension. Deduplicates customers across all source systems. CLIENT ≠ SERVICE_LOCATION ≠ CONTRACT — do not collapse these entities."
+    columns:
+      - name: canonical_id
+        description: "Surrogate canonical key — generated in dbt using dbt_utils.generate_surrogate_key."
+        tests:
+          - not_null
+          - unique
+      - name: client_name
+        description: "Normalised company name."
+        tests:
+          - not_null
+      - name: client_name_raw
+        description: "Original name before normalisation."
+      - name: client_status
+        description: "ACTIVE | INACTIVE."
+        tests:
+          - not_null
+      - name: parent_canonical_id
+        description: "Self-referencing FK to dim_client. Used for AT&T-style rollup groups resolved at gold layer."
+      - name: city
+        description: "City."
+      - name: state
+        description: "State."
+      - name: country
+        description: "Country. Defaults to US."
+      - name: zipcode
+        description: "Postal / ZIP code."
+      - name: open_balance
+        description: "Current outstanding AR balance (CUSTOMERS.openbalance)."
+      - name: credit_limit
+        description: "Approved credit limit (CUSTOMERS.creditlimit)."
+      - name: subsidiary_id
+        description: "FK to NetSuite subsidiary."
+      - name: division
+        description: "e.g. Janitorial, Aviation, National."
+      - name: primary_source_system
+        description: "Source system that is authoritative for this client record."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['netsuite', 'adp', 'janit', 'servicechannel', 'utilizecore', 'springshot']
+      - name: primary_source_id
+        description: "Source system PK value."
+        tests:
+          - not_null
+      - name: is_active
+        description: "Whether the client record is currently active. Defaults to true."
+        tests:
+          - not_null
+      - name: created_at
+        description: "Record creation timestamp."
+        tests:
+          - not_null
+      - name: updated_at
+        description: "Record last-updated timestamp."
+        tests:
+          - not_null
+      - name: dbt_loaded_at
+        description: "Timestamp when dbt last wrote this row."
+        tests:
+          - not_null
+
+  - name: dim_service_location
+    description: "Canonical service location dimension. Resolves the same physical location across multiple source systems with different IDs and inconsistent naming. Non-standard addresses are common (e.g. airport terminals have no street address)."
+    columns:
+      - name: canonical_id
+        description: "Surrogate canonical key — generated in dbt using dbt_utils.generate_surrogate_key."
+        tests:
+          - not_null
+          - unique
+      - name: client_canonical_id
+        description: "FK to dim_client. Every location belongs to a client."
+        tests:
+          - not_null
+      - name: location_name
+        description: "Normalised location name."
+        tests:
+          - not_null
+      - name: location_name_raw
+        description: "Original name before normalisation."
+      - name: address_line_1
+        description: "Street address line 1. Partially populated — non-standard addresses common."
+      - name: address_line_2
+        description: "Street address line 2."
+      - name: city
+        description: "City."
+      - name: state
+        description: "State."
+      - name: country
+        description: "Country. Defaults to US."
+      - name: zipcode
+        description: "Postal / ZIP code."
+      - name: location_type
+        description: "e.g. Airport Terminal, Office, Distribution."
+      - name: division
+        description: "Business division."
+      - name: csi_site_code
+        description: "CSI site code. CSI uses site codes rather than customer hierarchy — see notes in adapter."
+      - name: primary_source_system
+        description: "Source system that is authoritative for this location record."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['netsuite', 'adp', 'janit', 'servicechannel', 'utilizecore', 'springshot']
+      - name: primary_source_id
+        description: "Source system PK value."
+        tests:
+          - not_null
+      - name: is_active
+        description: "Whether the location record is currently active. Defaults to true."
+        tests:
+          - not_null
+      - name: created_at
+        description: "Record creation timestamp."
+        tests:
+          - not_null
+      - name: updated_at
+        description: "Record last-updated timestamp."
+        tests:
+          - not_null
+      - name: dbt_loaded_at
+        description: "Timestamp when dbt last wrote this row."
+        tests:
+          - not_null

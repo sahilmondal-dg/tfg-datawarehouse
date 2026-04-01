@@ -1,0 +1,184 @@
+# NetSuite SuiteAnalytics Connect — JDBC Configuration
+# Schema reference: TFG NetSuite Schema Reference.docx (DataGrokr, March 2026)
+#
+# CONNECTION FIELDS (used to build the JDBC URL in ingest_netsuite.py)
+#   host        — SuiteAnalytics Connect hostname (e.g. 12345678.connect.api.netsuite.com)
+#   port        — Connect port, default 1708
+#   account_id  — NetSuite account ID (numeric string, e.g. "12345678")
+#   role        — NetSuite role ID that has been granted SuiteAnalytics access
+# Auth credentials are NOT stored here — use env vars NETSUITE_USER + NETSUITE_PASSWORD
+#
+# TABLE FIELDS
+#   name            — SuiteAnalytics Connect table name (exact, case-sensitive)
+#   primary_key     — single PK column used for null validation
+#   composite_pk    — list of columns for tables with composite PKs (dedup in dbt)
+#   timestamp_field — incremental watermark column (highlighted pink in Connect Browser)
+#   query           — SuiteQL extraction query; {last_run} and {offset} are substituted at runtime
+
+connection:
+  host: <YOUR_ACCOUNT_ID>.connect.api.netsuite.com  # replace with real hostname on Day 1
+  port: 1708
+  account_id: <YOUR_ACCOUNT_ID>                      # numeric NetSuite account ID
+  role: <YOUR_ROLE_ID>                               # role ID with SuiteAnalytics access
+
+tables:
+  # -------------------------------------------------------------------------
+  # TRANSACTION — core transaction header (WorkOrders, Invoices, Journals, etc.)
+  # No type filter here — pull all types and let silver dbt model split by type.
+  #   Confirm type string values via RECORDTYPE distribution queries before
+  #     adding any WHERE type = '...' filter.
+  # -------------------------------------------------------------------------
+  - name: TRANSACTION
+    primary_key: transaction_id
+    timestamp_field: date_last_modified
+    query: |
+      SELECT transaction_id, type, entity_id, subsidiary_id, department_id, location_id,
+             trandate, transaction_number, status, memo, created_from_id, currency_id,
+             exchange_rate, created_by_id, create_date, date_last_modified, transaction_extid
+      FROM TRANSACTION
+      WHERE date_last_modified >= '{last_run}'
+      ORDER BY date_last_modified ASC
+      OFFSET {offset} ROWS FETCH NEXT 5000 ROWS ONLY
+
+  # -------------------------------------------------------------------------
+  # TRANSACTIONLINE — line detail for all transaction types
+  # Composite PK: (transaction_id, transaction_line_id) — dedup in dbt on both.
+  # Credit/debit amounts are exposed here (NOT on TRANSACTION header).
+  # -------------------------------------------------------------------------
+  - name: TRANSACTIONLINE
+    primary_key: transaction_line_id
+    composite_pk:
+      - transaction_id
+      - transaction_line_id
+    timestamp_field: date_last_modified_gmt
+    query: |
+      SELECT transaction_id, transaction_line_id, line, item_id, account_id, employee_id,
+             quantity, rate, amount, department_id, location_id, subsidiary_id,
+             is_cost_line, is_custom_line, date_last_modified_gmt
+      FROM TRANSACTIONLINE
+      WHERE date_last_modified_gmt >= '{last_run}'
+      ORDER BY date_last_modified_gmt ASC
+      OFFSET {offset} ROWS FETCH NEXT 5000 ROWS ONLY
+
+  # -------------------------------------------------------------------------
+  # CUSTOMERS — bill-to party master
+  # Include inactive customers (isinactive = T) — historical transactions reference them.
+  # Silver model must handle the inactive flag explicitly.
+  # -------------------------------------------------------------------------
+  - name: CUSTOMERS
+    primary_key: customer_id
+    timestamp_field: date_last_modified
+    query: |
+      SELECT customer_id, companyname, subsidiary_id, parent_id, location_id,
+             currency_id, billaddress, city, state, zipcode, country,
+             openbalance, creditlimit, credithold, isinactive, is_person,
+             create_date, date_last_modified
+      FROM CUSTOMERS
+      WHERE date_last_modified >= '{last_run}'
+      ORDER BY date_last_modified ASC
+      OFFSET {offset} ROWS FETCH NEXT 5000 ROWS ONLY
+
+  # -------------------------------------------------------------------------
+  # ENTITY — supertype for all party records (customers, employees, vendors)
+  # Pull all entity_type values — silver dbt model filters by entity_type.
+  # entity_type values: Customer, Employee, Vendor, Partner, OtherName
+  # -------------------------------------------------------------------------
+  - name: ENTITY
+    primary_key: entity_id
+    timestamp_field: date_last_modified
+    query: |
+      SELECT entity_id, entity_type, name, full_name, first_name, last_name,
+             email, phone, address_one, city, state, country, zipcode,
+             subsidiary, parent_id, isinactive, create_date, date_last_modified
+      FROM ENTITY
+      WHERE date_last_modified >= '{last_run}'
+      ORDER BY date_last_modified ASC
+      OFFSET {offset} ROWS FETCH NEXT 5000 ROWS ONLY
+
+  # -------------------------------------------------------------------------
+  # LOCATIONS — service location dimension
+  # ⚠️  Module-dependent: Multi-Location Inventory must be enabled.
+  # If this returns 0 rows, the module is off — all location_id columns across
+  # other tables will also be NULL. Confirm with Zeel before flagging as a gap.
+  # -------------------------------------------------------------------------
+  - name: LOCATIONS
+    primary_key: location_id
+    timestamp_field: date_last_modified
+    query: |
+      SELECT location_id, name, full_name, city, state, country, zipcode,
+             address, address_one, address_two, phone, parent_id, isinactive,
+             date_last_modified
+      FROM LOCATIONS
+      WHERE date_last_modified >= '{last_run}'
+      ORDER BY date_last_modified ASC
+      OFFSET {offset} ROWS FETCH NEXT 5000 ROWS ONLY
+
+  # -------------------------------------------------------------------------
+  # ACCOUNTS — chart of accounts
+  # Include inactive accounts — historical GL entries reference them.
+  # Note: use ACCOUNT_SUBSIDIARY_MAP for subsidiary associations (no direct column here).
+  # -------------------------------------------------------------------------
+  - name: ACCOUNTS
+    primary_key: account_id
+    timestamp_field: date_last_modified
+    query: |
+      SELECT account_id, accountnumber, name, full_name, type_name, is_leftside,
+             is_balancesheet, is_summary, department_id, location_id, currency_id,
+             parent_id, isinactive, description, date_last_modified
+      FROM ACCOUNTS
+      WHERE date_last_modified >= '{last_run}'
+      ORDER BY date_last_modified ASC
+      OFFSET {offset} ROWS FETCH NEXT 5000 ROWS ONLY
+
+  # -------------------------------------------------------------------------
+  # DEPARTMENTS — cost centre dimension
+  # ⚠️  Module-dependent: Departments feature must be enabled under accounting
+  # preferences. If 0 rows returned, the feature is off — all department_id
+  # columns on TRANSACTION and TRANSACTIONLINE will also be NULL.
+  # -------------------------------------------------------------------------
+  - name: DEPARTMENTS
+    primary_key: department_id
+    timestamp_field: date_last_modified
+    query: |
+      SELECT department_id, name, full_name, parent_id, isinactive, date_last_modified
+      FROM DEPARTMENTS
+      WHERE date_last_modified >= '{last_run}'
+      ORDER BY date_last_modified ASC
+      OFFSET {offset} ROWS FETCH NEXT 5000 ROWS ONLY
+
+  # -------------------------------------------------------------------------
+  # EMPLOYEES — workforce master
+  # ADP → NetSuite matching signals: firstname, lastname, hiredate, email.
+  # Treat nulls on any of these four fields as a data quality flag.
+  # socialsecuritynumber excluded — PII, not exposed in ADS by design.
+  # -------------------------------------------------------------------------
+  - name: EMPLOYEES
+    primary_key: employee_id
+    timestamp_field: date_last_modified
+    query: |
+      SELECT employee_id, firstname, lastname, name, email, phone, hiredate,
+             subsidiary_id, department_id, location_id, jobtitle, status,
+             isinactive, is_in_payroll, labor_cost, create_date, date_last_modified
+      FROM EMPLOYEES
+      WHERE date_last_modified >= '{last_run}'
+      ORDER BY date_last_modified ASC
+      OFFSET {offset} ROWS FETCH NEXT 5000 ROWS ONLY
+
+  # -------------------------------------------------------------------------
+  # SUBSIDIARIES — root dimension, referenced by nearly every other table
+  # Small, slow-changing table (typically 4-10 rows).
+  # Full reload acceptable but incremental applied here for consistency.
+  # Use isinactive_bool (not isinactive) in queries per Connect Browser recommendation.
+  # -------------------------------------------------------------------------
+  - name: SUBSIDIARIES
+    primary_key: subsidiary_id
+    timestamp_field: date_last_modified
+    query: |
+      SELECT subsidiary_id, name, legal_name, full_name, parent_id,
+             city, country, state, address1, address2, zipcode,
+             federal_number, isinactive, isinactive_bool, is_elimination,
+             date_last_modified
+      FROM SUBSIDIARIES
+      WHERE date_last_modified >= '{last_run}'
+      ORDER BY date_last_modified ASC
+      OFFSET {offset} ROWS FETCH NEXT 5000 ROWS ONLY

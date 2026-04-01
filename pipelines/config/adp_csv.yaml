@@ -1,0 +1,60 @@
+# ADP CSV Export Configuration — SFTP / S3 file polling
+# Source: ADP_Data_Source_Documentation.docx
+# Used by: ingest_adp_csv.py
+#
+# file_pattern values are placeholders.
+#     ADP report exports are named by ADP's scheduled report configuration.
+#     Confirm the exact filename patterns for each report with Zeel before
+#     setting dry_run=False in ingest_adp_csv.py.
+#
+# TRANSPORT FIELDS
+#   type   — sftp | s3 (switches connection method at runtime)
+#   SFTP:  host from env var ADP_SFTP_HOST, port below, path below
+#          credentials: ADP_SFTP_USER, ADP_SFTP_PASSWORD (env vars)
+#   S3:    bucket from env var ADP_S3_BUCKET, prefix below
+#
+# TABLE FIELDS
+#   name          — landing table name in bronze
+#   file_pattern  — glob pattern matched against filenames in the SFTP path / S3 prefix
+#                   last-processed filename is tracked in pipeline state to skip re-downloads
+
+transport:
+  type: sftp               # sftp | s3 — update once TFG's ADP delivery method is confirmed
+  # SFTP settings
+  port: 22
+  path: /adp/exports       # remote directory where ADP drops files — confirm with Zeel
+  # S3 settings (used when type: s3)
+  prefix: adp/exports      # S3 key prefix — confirm with Zeel
+
+tables:
+  # One row per employee. Central table — associateOID links all other ADP tables.
+  - name: workers
+    file_pattern: "workers_*.csv"
+
+  # Payroll calendar — defines pay period start/end dates and expected pay dates.
+  - name: payroll_groups
+    file_pattern: "payroll_groups_*.csv"
+
+  # Daily clock-in/clock-out records. One row per shift (entryID is unique per shift).
+  - name: team_time_cards
+    file_pattern: "team_time_cards_*.csv"
+
+  # Self-service time-off requests (vacation, sick, personal, medical).
+  - name: time_off_requests
+    file_pattern: "time_off_requests_*.csv"
+
+  # Formal HR-managed leave episodes (FMLA, military, etc.) — distinct from time_off_requests.
+  - name: leaves
+    file_pattern: "leaves_*.csv"
+
+  # Payroll input batch — earnings, deductions, memos per employee per pay run.
+  - name: pay_data_input
+    file_pattern: "pay_data_input_*.csv"
+
+  # Pay stub summaries — what each employee was actually paid after deductions.
+  - name: pay_statements
+    file_pattern: "pay_statements_*.csv"
+
+  # Standing deduction rules — recurring deductions applied automatically each period.
+  - name: payroll_instructions
+    file_pattern: "payroll_instructions_*.csv"

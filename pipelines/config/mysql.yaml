@@ -1,0 +1,4 @@
+tables:
+  - name: work_orders
+    primary_key: id
+    timestamp_field: updated_at

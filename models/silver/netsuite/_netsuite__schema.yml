@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  # TODO: replace with real model names as staging models are built
+  - name: stg_netsuite__placeholder
+    description: "Staged netsuite placeholder. Normalised, typed, snake_case. Source-shaped — no cross-source joins."
+    columns:
+      - name: netsuite_id
+        description: "Source system primary key."
+        tests:
+          - not_null
+          - unique

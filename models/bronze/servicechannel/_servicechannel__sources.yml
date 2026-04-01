@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: servicechannel
+    schema: bronze
+    database: "{{ env_var('DBT_DATABASE') }}"
+    description: "servicechannel raw source — landed by ingest_servicechannel.py. No transformations applied."
+    tables:
+      # TODO: replace with real table names on Day 1 of access
+      - name: _placeholder
+        description: "Raw _placeholder table from servicechannel."

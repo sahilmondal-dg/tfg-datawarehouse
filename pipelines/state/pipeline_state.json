@@ -1,0 +1,30 @@
+{
+  "netsuite": {
+    "TRANSACTION": "1970-01-01 00:00:00",
+    "TRANSACTIONLINE": "1970-01-01 00:00:00",
+    "CUSTOMERS": "1970-01-01 00:00:00",
+    "ENTITY": "1970-01-01 00:00:00",
+    "LOCATIONS": "1970-01-01 00:00:00",
+    "ACCOUNTS": "1970-01-01 00:00:00",
+    "DEPARTMENTS": "1970-01-01 00:00:00",
+    "EMPLOYEES": "1970-01-01 00:00:00",
+    "SUBSIDIARIES": "1970-01-01 00:00:00"
+  },
+  "adp": {
+    "workers": "1970-01-01 00:00:00",
+    "pay_statements": "1970-01-01 00:00:00"
+  },
+  "adp_csv": {
+    "workers": null,
+    "payroll_groups": null,
+    "team_time_cards": null,
+    "time_off_requests": null,
+    "leaves": null,
+    "pay_data_input": null,
+    "pay_statements": null,
+    "payroll_instructions": null
+  },
+  "mysql": {
+    "work_orders": "1970-01-01 00:00:00"
+  }
+}

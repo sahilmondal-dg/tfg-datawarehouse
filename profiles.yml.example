@@ -1,0 +1,13 @@
+tfg_datawarehouse:
+  target: dev
+  outputs:
+    dev:
+      type: fabric
+      driver: "ODBC Driver 18 for SQL Server"
+      server: <your-fabric-warehouse-endpoint>
+      port: 1433
+      database: <your-fabric-database>
+      schema: dbt_<your_name>
+      authentication: CLI
+      encrypt: true
+      trust_cert: false

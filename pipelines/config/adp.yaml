@@ -1,0 +1,69 @@
+# ADP Workforce Now — API Connector Configuration
+# Source: ADP_Data_Source_Documentation.docx
+#
+# TESTING MODE (current): pointing to DummyJSON — no auth needed.
+# Set ADP_BASE_URL=https://dummyjson.com in .env to run now.
+#
+# SWITCHING TO REAL ADP — checklist:
+#   1. Set ADP_BASE_URL to the real ADP base URL in .env
+#   2. Set ADP_TOKEN_URL, ADP_CLIENT_ID, ADP_CLIENT_SECRET in .env
+#   3. Update endpoint, data_key, top_param, skip_param, page_size, params per table below
+#   4. Run with --dry-run first to confirm response shape before a full live run
+#
+# CONFIG FIELDS
+#   endpoint   — API path appended to ADP_BASE_URL
+#   data_key   — top-level response key that holds the rows array
+#   top_param  — query param name for page size  ($top for ADP, limit for DummyJSON)
+#   skip_param — query param name for offset     ($skip for ADP, skip for DummyJSON)
+#   page_size  — rows per request
+#   primary_key — used for null validation; associateOID links all real ADP tables
+#   timestamp_field — watermark column for incremental state (null = no incremental)
+#   load_type  — incremental | full
+#   params     — additional query params; {last_run} substituted at runtime
+
+tables:
+  # ---------------------------------------------------------------------------
+  # TESTING: DummyJSON /users — stands in for ADP workers
+  # REAL ADP:
+  #   endpoint:   /hr/v2/workers
+  #   data_key:   data
+  #   top_param:  $top
+  #   skip_param: $skip
+  #   page_size:  100
+  #   primary_key: associateOID
+  #   params:
+  #     modifiedSince: "{last_run}"
+  # ---------------------------------------------------------------------------
+  - name: users
+    endpoint: /users
+    data_key: users
+    top_param: limit
+    skip_param: skip
+    page_size: 30
+    primary_key: id
+    timestamp_field: null
+    load_type: full
+    params: {}
+
+  # ---------------------------------------------------------------------------
+  # TESTING: DummyJSON /products — has nested arrays (tags, reviews)
+  # which tests the separate_nested path exactly as ADP pay components would.
+  # REAL ADP:
+  #   endpoint:   /payroll/v1/pay-statements
+  #   data_key:   data
+  #   top_param:  $top
+  #   skip_param: $skip
+  #   page_size:  100
+  #   primary_key: associateOID
+  #   load_type:  full
+  # ---------------------------------------------------------------------------
+  - name: products
+    endpoint: /products
+    data_key: products
+    top_param: limit
+    skip_param: skip
+    page_size: 20
+    primary_key: id
+    timestamp_field: null
+    load_type: full
+    params: {}

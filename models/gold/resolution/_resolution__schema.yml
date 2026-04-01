@@ -1,0 +1,70 @@
+version: 2
+
+# NOTE: source_entity_map uses map_id as its primary key, NOT canonical_id.
+# canonical_id here is a FK to the relevant canonical dim table and is intentionally
+# NOT unique — many source system IDs from different systems can map to the same canonical entity.
+# not_null + unique tests are placed on map_id accordingly.
+
+models:
+  - name: source_entity_map
+    description: "Entity resolution backbone. Records how every source system identifier maps to a canonical ID. Resolves Jan-IT site IDs → NetSuite location IDs, ServiceChannel acct → NetSuite customer IDs, UtilizeCore location → NetSuite location IDs. Employee resolution is ADP-only — no cross-system join needed. winteam removed; ebs not included (financial events, not entities)."
+    columns:
+      - name: map_id
+        description: "Surrogate key for the mapping row itself — the primary key for this table."
+        tests:
+          - not_null
+          - unique
+      - name: entity_type
+        description: "What type of canonical entity this mapping resolves to."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['CLIENT', 'SERVICE_LOCATION', 'EMPLOYEE']
+      - name: source_system
+        description: "Source system contributing this identifier."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['netsuite', 'adp', 'janit', 'servicechannel', 'utilizecore', 'springshot']
+      - name: source_id
+        description: "Source system PK value."
+        tests:
+          - not_null
+      - name: canonical_id
+        description: "FK to the relevant canonical dim table (dim_client, dim_service_location, or dim_employee). NOT unique — many source IDs can map to the same canonical entity."
+        tests:
+          - not_null
+      - name: resolution_status
+        description: "Current resolution confidence status."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['CONFIRMED', 'PENDING_REVIEW', 'UNRESOLVED']
+      - name: confidence_score
+        description: "Resolution confidence score, 0.0000–1.0000."
+      - name: resolution_method
+        description: "Method used to produce this mapping."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['EXACT_MATCH', 'FUZZY_MATCH', 'LLM_ADJUDICATED', 'MANUAL_REVIEW']
+      - name: resolved_by
+        description: "Engineer name, 'llm', or 'auto'."
+      - name: reviewed_by
+        description: "Human reviewer for MANUAL_REVIEW rows."
+      - name: resolved_at
+        description: "Timestamp when resolution was recorded."
+      - name: resolution_notes
+        description: "Free-text notes about the resolution decision."
+      - name: created_at
+        description: "Record creation timestamp."
+        tests:
+          - not_null
+      - name: updated_at
+        description: "Record last-updated timestamp."
+        tests:
+          - not_null
+      - name: dbt_loaded_at
+        description: "Timestamp when dbt last wrote this row."
+        tests:
+          - not_null

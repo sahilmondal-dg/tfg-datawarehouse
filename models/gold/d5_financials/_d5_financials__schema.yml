@@ -1,0 +1,89 @@
+# CONDITIONAL (EBS): Phase 04 only. Do not build EBS adapter until Oracle EBS migration confirmed (target Sep/Oct). EBS rows are historical only — one-time extract, NOT a live pipeline.
+
+version: 2
+
+models:
+  - name: fct_gl_entry
+    description: "Event-based canonical GL entry. Atomic unit is a business event, not an ERP record. Each source (NetSuite, EBS) has its own per-ERP adapter staging model. Do not revert to entity-relationship model without flagging first."
+    columns:
+      - name: canonical_id
+        description: "Surrogate canonical key — generated in dbt using dbt_utils.generate_surrogate_key."
+        tests:
+          - not_null
+          - unique
+      - name: event_type
+        description: "Business event type. Drives the semantic meaning of the GL row."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['REVENUE_RECOGNITION', 'COST_ACCRUAL', 'PAYMENT_RECEIVED', 'JOURNAL_ADJUSTMENT', 'AP_INVOICE', 'AR_INVOICE', 'CREDIT_MEMO']
+      - name: source_system
+        description: "Source ERP system. ebs rows are historical only — loaded via one-time extract, not a live pipeline."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['netsuite', 'ebs']
+      - name: source_transaction_id
+        description: "Source system transaction ID."
+        tests:
+          - not_null
+      - name: source_journal_id
+        description: "Journal or batch ID from the source system."
+      - name: client_canonical_id
+        description: "FK to dim_client."
+      - name: contract_canonical_id
+        description: "FK to fct_contract."
+      - name: service_location_id
+        description: "FK to dim_service_location."
+      - name: gl_account_id
+        description: "GL account code."
+        tests:
+          - not_null
+      - name: gl_account_name
+        description: "GL account display name."
+      - name: gl_account_type
+        description: "REVENUE | EXPENSE | ASSET | LIABILITY."
+      - name: department_id
+        description: "Department dimension."
+      - name: subsidiary_id
+        description: "Subsidiary dimension."
+      - name: cost_centre_id
+        description: "Cost centre dimension."
+      - name: debit_amount
+        description: "Debit amount. Stored separately per EBS convention. Defaults to 0."
+      - name: credit_amount
+        description: "Credit amount. Stored separately per EBS convention. Defaults to 0."
+      - name: net_amount
+        description: "Net amount (credit_amount - debit_amount)."
+      - name: currency
+        description: "ISO 4217 currency code. Defaults to USD."
+      - name: exchange_rate
+        description: "FX exchange rate at time of transaction. Defaults to 1."
+      - name: amount_usd
+        description: "Net amount converted to USD (net_amount × exchange_rate)."
+      - name: transaction_date
+        description: "Date of the business transaction."
+        tests:
+          - not_null
+      - name: accounting_period
+        description: "Accounting period in YYYY-MM format, e.g. 2025-03."
+      - name: posted_date
+        description: "Date the entry was posted in the source GL."
+      - name: is_posted
+        description: "Whether the entry has been posted. Defaults to true."
+        tests:
+          - not_null
+      - name: is_reversal
+        description: "Whether this entry is a reversal of another entry. Defaults to false."
+        tests:
+          - not_null
+      - name: reversed_entry_id
+        description: "FK to the fct_gl_entry row that this entry reverses."
+      - name: created_at
+        description: "Record creation timestamp."
+        tests:
+          - not_null
+      - name: dbt_loaded_at
+        description: "Timestamp when dbt last wrote this row."
+        tests:
+          - not_null

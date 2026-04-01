@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  # TODO: replace with real model names as staging models are built
+  - name: stg_springshot__placeholder
+    description: "Staged springshot placeholder. Normalised, typed, snake_case. Source-shaped — no cross-source joins."
+    columns:
+      - name: springshot_id
+        description: "Source system primary key."
+        tests:
+          - not_null
+          - unique

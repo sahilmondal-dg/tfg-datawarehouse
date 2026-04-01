@@ -1,0 +1,173 @@
+version: 2
+
+models:
+  - name: fct_contract
+    description: "Canonical contract fact. Reconstructed from NetSuite — no native contracts table exists. contract_ref is a free-text field on the customer record. ARR may lag if uplifts are tracked in Excel."
+    columns:
+      - name: canonical_id
+        description: "Surrogate canonical key — generated in dbt using dbt_utils.generate_surrogate_key."
+        tests:
+          - not_null
+          - unique
+      - name: client_canonical_id
+        description: "FK to dim_client."
+        tests:
+          - not_null
+      - name: service_location_id
+        description: "FK to dim_service_location."
+      - name: contract_ref
+        description: "Free-text ref from NetSuite customer record."
+      - name: contract_name
+        description: "Contract display name."
+      - name: contract_type
+        description: "Drives labour optimisation logic. fixed-fee minimises hours, pay-by-hour aligns hours to billing, isp manages subcontractor margin."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['fixed-fee', 'pay-by-hour', 'isp']
+      - name: contracted_value
+        description: "Total contract value."
+      - name: annual_recurring_rev
+        description: "ARR — may lag if uplifts not recorded in NetSuite."
+      - name: currency
+        description: "ISO 4217 currency code. Defaults to USD."
+      - name: start_date
+        description: "Contract start date."
+      - name: end_date
+        description: "Contract end date."
+      - name: renewal_date
+        description: "Contract renewal date."
+      - name: contract_status
+        description: "ACTIVE | EXPIRED | PENDING | CANCELLED."
+      - name: primary_source_system
+        description: "Source system that is authoritative for this contract record."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['netsuite', 'adp', 'janit', 'servicechannel', 'utilizecore', 'springshot']
+      - name: primary_source_id
+        description: "Source system PK value."
+        tests:
+          - not_null
+      - name: is_active
+        description: "Whether the contract record is currently active. Defaults to true."
+        tests:
+          - not_null
+      - name: created_at
+        description: "Record creation timestamp."
+        tests:
+          - not_null
+      - name: updated_at
+        description: "Record last-updated timestamp."
+        tests:
+          - not_null
+      - name: dbt_loaded_at
+        description: "Timestamp when dbt last wrote this row."
+        tests:
+          - not_null
+
+  - name: fct_invoice
+    description: "Canonical invoice fact. work_order_canonical_id resolves TRANSACTION.created_from_id — the NetSuite self-referencing FK linking an Invoice back to its originating Work Order. source_created_from_id preserves the raw NetSuite transaction_id for traceability."
+    columns:
+      - name: canonical_id
+        description: "Surrogate canonical key — generated in dbt using dbt_utils.generate_surrogate_key."
+        tests:
+          - not_null
+          - unique
+      - name: contract_canonical_id
+        description: "FK to fct_contract."
+      - name: client_canonical_id
+        description: "FK to dim_client."
+        tests:
+          - not_null
+      - name: service_location_id
+        description: "FK to dim_service_location."
+      - name: work_order_canonical_id
+        description: "FK to fct_work_order. Resolved from TRANSACTION.created_from_id in NetSuite."
+      - name: source_created_from_id
+        description: "Raw NetSuite transaction_id of originating Work Order. Preserved for traceability."
+      - name: invoice_number
+        description: "Invoice number."
+      - name: invoice_date
+        description: "Date the invoice was issued."
+      - name: due_date
+        description: "Payment due date."
+      - name: invoice_amount
+        description: "Invoice subtotal before tax."
+      - name: tax_amount
+        description: "Tax amount. Defaults to 0."
+      - name: total_amount
+        description: "Total invoice amount including tax."
+      - name: currency
+        description: "ISO 4217 currency code. Defaults to USD."
+      - name: invoice_status
+        description: "OPEN | PAID | VOIDED | OVERDUE."
+      - name: payment_date
+        description: "Date payment was received."
+      - name: memo
+        description: "Free-text memo from TRANSACTION.memo — journal narration."
+      - name: primary_source_system
+        description: "Source system that is authoritative for this invoice record."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['netsuite', 'adp', 'janit', 'servicechannel', 'utilizecore', 'springshot']
+      - name: primary_source_id
+        description: "Source system PK value."
+        tests:
+          - not_null
+      - name: created_at
+        description: "Record creation timestamp."
+        tests:
+          - not_null
+      - name: updated_at
+        description: "Record last-updated timestamp."
+        tests:
+          - not_null
+      - name: dbt_loaded_at
+        description: "Timestamp when dbt last wrote this row."
+        tests:
+          - not_null
+
+  - name: fct_invoice_line
+    description: "Line-level detail for canonical invoices. Captures per-line quantities, pricing, and GL mapping for downstream financial analysis."
+    columns:
+      - name: canonical_id
+        description: "Surrogate canonical key — generated in dbt using dbt_utils.generate_surrogate_key."
+        tests:
+          - not_null
+          - unique
+      - name: invoice_canonical_id
+        description: "FK to fct_invoice."
+        tests:
+          - not_null
+      - name: work_order_canonical_id
+        description: "FK to fct_work_order (defined in D3)."
+      - name: line_number
+        description: "Line sequence number on the invoice."
+      - name: item_description
+        description: "Description of the line item."
+      - name: quantity
+        description: "Quantity of units on this line."
+      - name: unit_price
+        description: "Unit price."
+      - name: line_amount
+        description: "Total line amount (quantity × unit_price)."
+      - name: gl_account_id
+        description: "GL account code for this line."
+      - name: department_id
+        description: "Department dimension."
+      - name: primary_source_system
+        description: "Source system that is authoritative for this invoice line record."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['netsuite', 'adp', 'janit', 'servicechannel', 'utilizecore', 'springshot']
+      - name: primary_source_id
+        description: "Source system PK value."
+        tests:
+          - not_null
+      - name: dbt_loaded_at
+        description: "Timestamp when dbt last wrote this row."
+        tests:
+          - not_null

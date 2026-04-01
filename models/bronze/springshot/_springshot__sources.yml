@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: springshot
+    schema: bronze
+    database: "{{ env_var('DBT_DATABASE') }}"
+    description: "springshot raw source — landed by ingest_springshot.py. No transformations applied."
+    tables:
+      # TODO: replace with real table names on Day 1 of access
+      - name: _placeholder
+        description: "Raw _placeholder table from springshot."

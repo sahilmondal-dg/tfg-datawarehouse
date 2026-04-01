@@ -1,0 +1,14 @@
+# CONDITIONAL: Phase 04 only. Do not build until EBS migration confirmed.
+
+version: 2
+
+models:
+  # TODO: replace with real model names as staging models are built
+  - name: stg_ebs__placeholder
+    description: "Staged ebs placeholder. Normalised, typed, snake_case. Source-shaped — no cross-source joins."
+    columns:
+      - name: ebs_id
+        description: "Source system primary key."
+        tests:
+          - not_null
+          - unique

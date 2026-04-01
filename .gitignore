@@ -1,0 +1,47 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# dbt artifacts
+target/
+dbt_packages/
+logs/
+.user.yml
+
+# Environment variables — never commit credentials
+.env
+.env.*
+profiles.yml
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# dbt compiled artifacts — generated, not source
+compiled/
+run/
+
+# Pipeline test output — local only, not source
+pipelines/test_output/
+
+# NetSuite JDBC driver jar — licensed, not distributed via repo
+pipelines/*.jar
+pipelines/lib/

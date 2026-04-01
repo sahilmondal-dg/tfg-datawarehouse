@@ -1,0 +1,15 @@
+# dbt
+dbt-core==1.9.10
+dbt-fabric==1.9.9
+
+# Pipeline ingestion
+pyyaml
+python-dotenv
+requests
+jaydebeapi
+pymysql
+paramiko
+boto3
+pandas
+azure-storage-file-datalake
+azure-identity
