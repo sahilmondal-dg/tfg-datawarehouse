@@ -62,12 +62,20 @@ jobs:
 
       # -------------------------------------------------------------------
       # dbt — transforms bronze Delta tables into silver models
-      # Runs only if ingestion produced tables in the Lakehouse
+      # Connects to Fabric Warehouse (DDL-capable) and cross-queries the
+      # Lakehouse (bronze) using Fabric's cross-database querying.
+      #
+      # Required secrets:
+      #   FABRIC_SQL_ENDPOINT      — Warehouse SQL connection string
+      #                              (from Warehouse → Settings → SQL connection)
+      #   FABRIC_WAREHOUSE_DATABASE — Warehouse database name (display name
+      #                               you gave the Warehouse, e.g. "silver_wh")
       # -------------------------------------------------------------------
       - name: Generate dbt profiles.yml
         working-directory: .
         env:
           FABRIC_SQL_ENDPOINT: ${{ secrets.FABRIC_SQL_ENDPOINT }}
+          FABRIC_WAREHOUSE_DATABASE: ${{ secrets.FABRIC_WAREHOUSE_DATABASE }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
@@ -82,7 +90,7 @@ jobs:
                 driver: "ODBC Driver 18 for SQL Server"
                 server: $FABRIC_SQL_ENDPOINT
                 port: 1433
-                database: bronze
+                database: $FABRIC_WAREHOUSE_DATABASE
                 schema: dbt
                 authentication: ServicePrincipal
                 client_id: "$AZURE_CLIENT_ID"
@@ -95,6 +103,8 @@ jobs:
       - name: Run dbt silver models
         working-directory: .
         env:
+          # DBT_DATABASE is the Lakehouse name — used by source() refs in
+          # _adp__sources.yml. Fabric Warehouse cross-queries it by name.
           DBT_DATABASE: bronze
         run: dbt run --select silver.adp --profiles-dir ~/.dbt
         continue-on-error: true
