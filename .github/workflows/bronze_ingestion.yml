@@ -50,6 +50,7 @@ jobs:
           FABRIC_PASSWORD: ${{ secrets.FABRIC_PASSWORD }}
           FABRIC_ACCOUNT_URL: ${{ secrets.FABRIC_ACCOUNT_URL }}
           FABRIC_FILE_SYSTEM: ${{ secrets.FABRIC_FILE_SYSTEM }}
+          FABRIC_LAKEHOUSE_ID: ${{ secrets.FABRIC_LAKEHOUSE_ID }}
         run: python ingest_adp_api.py
         continue-on-error: true
 
