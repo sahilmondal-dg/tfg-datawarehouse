@@ -2,10 +2,11 @@ version: 2
 
 sources:
   - name: adp
-    schema: bronze
+    schema: dbo
     database: "{{ env_var('DBT_DATABASE') }}"
-    description: "adp raw source — landed by ingest_adp.py. No transformations applied."
+    description: "ADP raw tables — written as Delta by ingest_adp_api.py. No transformations applied."
     tables:
-      # TODO: replace with real table names on Day 1 of access
-      - name: _placeholder
-        description: "Raw _placeholder table from adp."
+      - name: bronze_adp_users
+        description: "Raw ADP workers (DummyJSON /users in test mode)."
+      - name: bronze_adp_products
+        description: "Raw ADP pay statements (DummyJSON /products in test mode)."

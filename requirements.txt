@@ -11,6 +11,6 @@ pymysql
 paramiko
 boto3
 pandas
-azure-storage-file-datalake
 azure-identity
 azure-core
+deltalake

@@ -1,12 +1,8 @@
 version: 2
 
 models:
-  # TODO: replace with real model names as staging models are built
-  - name: stg_adp__placeholder
-    description: "Staged adp placeholder. Normalised, typed, snake_case. Source-shaped — no cross-source joins."
-    columns:
-      - name: adp_id
-        description: "Source system primary key."
-        tests:
-          - not_null
-          - unique
+  - name: silver_adp_users
+    description: "ADP users — all columns renamed with silver_ prefix. Source-shaped, no joins."
+
+  - name: silver_adp_products
+    description: "ADP pay statements — all columns renamed with silver_ prefix. Source-shaped, no joins."

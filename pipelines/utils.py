@@ -2,8 +2,6 @@ import yaml
 import json
 import os
 from datetime import datetime, UTC
-from azure.storage.filedatalake import DataLakeServiceClient
-from azure.identity import ClientSecretCredential
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -56,27 +54,13 @@ def update_last_run(source, table, last_run):
 
 
 # =========================
-# FABRIC AUTH (Service Principal)
-# =========================
-def _get_onelake_client() -> DataLakeServiceClient:
-    credential = ClientSecretCredential(
-        tenant_id=get_env("AZURE_TENANT_ID"),
-        client_id=get_env("AZURE_CLIENT_ID"),
-        client_secret=get_env("AZURE_CLIENT_SECRET"),
-    )
-    return DataLakeServiceClient(
-        account_url=get_env("FABRIC_ACCOUNT_URL"),
-        credential=credential
-    )
-
-
-# =========================
-# FABRIC LANDING
+# FABRIC LANDING (Delta format → Lakehouse Tables)
 # =========================
 def land_to_onelake(rows, source, table, partition_date):
     """
-    Lands rows to OneLake when FABRIC_ACCOUNT_URL is set.
-    Falls back to local test_output/ when Fabric creds are not configured.
+    Writes rows as a Delta table to OneLake Lakehouse Tables section.
+    Table name: bronze_{source}_{table}  (e.g. bronze_adp_users)
+    Falls back to local JSONL when FABRIC_ACCOUNT_URL is not set.
     """
     account_url = os.getenv("FABRIC_ACCOUNT_URL")
 
@@ -91,22 +75,36 @@ def land_to_onelake(rows, source, table, partition_date):
         print(f"[LOCAL]   {out_path}  ({len(rows)} rows)")
         return
 
-    # FABRIC_FILE_SYSTEM = workspace GUID (e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-    # FABRIC_LAKEHOUSE_ID = lakehouse artifact GUID
-    # OneLake path: <workspace-guid>/<lakehouse-guid>/Files/bronze/...
+    import pandas as pd
+    from deltalake import write_deltalake
+
     workspace_id = get_env("FABRIC_FILE_SYSTEM")
     lakehouse_id = get_env("FABRIC_LAKEHOUSE_ID")
+    table_name = f"bronze_{source}_{table}"
 
-    client = _get_onelake_client()
-    fs = client.get_file_system_client(workspace_id)
+    # abfss://<workspace-guid>@onelake.dfs.fabric.microsoft.com/<lakehouse-guid>/Tables/<name>
+    delta_path = (
+        f"abfss://{workspace_id}@onelake.dfs.fabric.microsoft.com"
+        f"/{lakehouse_id}/Tables/{table_name}"
+    )
 
-    path = f"{lakehouse_id}/Files/bronze/source={source}/table={table}/dt={partition_date}/data.json"
-    file_client = fs.get_file_client(path)
+    storage_options = {
+        "azure_storage_client_id": get_env("AZURE_CLIENT_ID"),
+        "azure_storage_client_secret": get_env("AZURE_CLIENT_SECRET"),
+        "azure_storage_tenant_id": get_env("AZURE_TENANT_ID"),
+    }
 
-    content = "\n".join([json.dumps(row, default=str) for row in rows])
-    file_client.upload_data(content, overwrite=True)
+    # Flatten nested dicts/lists to JSON strings so Delta can handle them
+    processed = []
+    for row in rows:
+        processed.append({
+            k: json.dumps(v, default=str) if isinstance(v, (dict, list)) else v
+            for k, v in row.items()
+        })
 
-    print(f"[ONELAKE] {path}  ({len(rows)} rows)")
+    df = pd.DataFrame(processed)
+    write_deltalake(delta_path, df, mode="overwrite", storage_options=storage_options)
+    print(f"[DELTA]   {delta_path}  ({len(rows)} rows)")
 
 
 # =========================
