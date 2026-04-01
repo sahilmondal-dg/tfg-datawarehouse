@@ -91,12 +91,16 @@ def land_to_onelake(rows, source, table, partition_date):
         print(f"[LOCAL]   {out_path}  ({len(rows)} rows)")
         return
 
-    file_system = get_env("FABRIC_FILE_SYSTEM")
+    # FABRIC_FILE_SYSTEM = workspace GUID (e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+    # FABRIC_LAKEHOUSE_ID = lakehouse artifact GUID
+    # OneLake path: <workspace-guid>/<lakehouse-guid>/Files/bronze/...
+    workspace_id = get_env("FABRIC_FILE_SYSTEM")
+    lakehouse_id = get_env("FABRIC_LAKEHOUSE_ID")
 
     client = _get_onelake_client()
-    fs = client.get_file_system_client(file_system)
+    fs = client.get_file_system_client(workspace_id)
 
-    path = f"Files/bronze/source={source}/table={table}/dt={partition_date}/data.json"
+    path = f"{lakehouse_id}/Files/bronze/source={source}/table={table}/dt={partition_date}/data.json"
     file_client = fs.get_file_client(path)
 
     content = "\n".join([json.dumps(row, default=str) for row in rows])
