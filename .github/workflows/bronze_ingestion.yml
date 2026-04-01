@@ -43,11 +43,13 @@ jobs:
           ADP_TOKEN_URL: ${{ secrets.ADP_TOKEN_URL }}
           ADP_CLIENT_ID: ${{ secrets.ADP_CLIENT_ID }}
           ADP_CLIENT_SECRET: ${{ secrets.ADP_CLIENT_SECRET }}
-          FABRIC_ACCOUNT_URL: ${{ secrets.FABRIC_ACCOUNT_URL }}
-          FABRIC_FILE_SYSTEM: ${{ secrets.FABRIC_FILE_SYSTEM }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          FABRIC_USERNAME: ${{ secrets.FABRIC_USERNAME }}
+          FABRIC_PASSWORD: ${{ secrets.FABRIC_PASSWORD }}
+          FABRIC_ACCOUNT_URL: ${{ secrets.FABRIC_ACCOUNT_URL }}
+          FABRIC_FILE_SYSTEM: ${{ secrets.FABRIC_FILE_SYSTEM }}
         run: python ingest_adp_api.py
         continue-on-error: true
 

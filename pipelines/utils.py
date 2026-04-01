@@ -1,8 +1,11 @@
 import yaml
 import json
 import os
+import time
+import requests
 from datetime import datetime, UTC
 from azure.storage.filedatalake import DataLakeServiceClient
+from azure.core.credentials import AccessToken
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -55,12 +58,73 @@ def update_last_run(source, table, last_run):
 
 
 # =========================
+# FABRIC AUTH (Option A — user password flow)
+# =========================
+class _StaticTokenCredential:
+    """
+    Wraps a raw token string into the Azure SDK credential interface.
+    Token is fetched once per pipeline run — fresh each GitHub Actions job.
+    """
+    def __init__(self, token: str):
+        self._token = token
+
+    def get_token(self, *scopes, **kwargs):
+        return AccessToken(self._token, int(time.time()) + 3600)
+
+
+def _get_fabric_token() -> str:
+    """
+    Fetches a short-lived Azure AD token using username/password flow.
+    Requires AZURE_TENANT_ID, FABRIC_USERNAME, FABRIC_PASSWORD in env.
+    Will raise clearly if MFA is enforced on the account.
+    """
+    tenant_id = get_env("AZURE_TENANT_ID")
+    url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
+
+    payload = {
+        "grant_type": "password",
+        # Well-known Azure PowerShell public client ID — no app registration needed
+        "client_id": "1950a258-227b-4e31-a9cf-717495945fc2",
+        "username": get_env("FABRIC_USERNAME"),
+        "password": get_env("FABRIC_PASSWORD"),
+        "scope": "https://storage.azure.com/.default",
+    }
+
+    response = requests.post(url, data=payload, timeout=30)
+
+    data = response.json()
+
+    if "access_token" not in data:
+        error = data.get("error", "unknown")
+        description = data.get("error_description", "no description")
+
+        # Surface MFA failure clearly rather than a cryptic SDK error
+        if "AADSTS50076" in description or "AADSTS50079" in description:
+            raise RuntimeError(
+                "MFA is enforced on this account — Option A will not work. "
+                "Either disable MFA on this account or switch to Option B (dedicated service account)."
+            )
+
+        raise RuntimeError(f"Token fetch failed [{error}]: {description}")
+
+    return data["access_token"]
+
+
+def _get_onelake_client() -> DataLakeServiceClient:
+    token = _get_fabric_token()
+    return DataLakeServiceClient(
+        account_url=get_env("FABRIC_ACCOUNT_URL"),
+        credential=_StaticTokenCredential(token)
+    )
+
+
+# =========================
 # FABRIC LANDING
 # =========================
 def land_to_onelake(rows, source, table, partition_date):
     """
     Lands rows to OneLake when FABRIC_ACCOUNT_URL is set.
-    Falls back to a local test_output/ file when Fabric credentials are not configured.
+    Falls back to local test_output/ when Fabric creds are not configured.
     """
     account_url = os.getenv("FABRIC_ACCOUNT_URL")
 
@@ -76,9 +140,9 @@ def land_to_onelake(rows, source, table, partition_date):
         return
 
     file_system = get_env("FABRIC_FILE_SYSTEM")
-    credential = get_env("FABRIC_TOKEN")
 
-    client = DataLakeServiceClient(account_url, credential=credential)
+    # Old static token path removed — always use user token flow now
+    client = _get_onelake_client()
     fs = client.get_file_system_client(file_system)
 
     path = f"Files/bronze/source={source}/table={table}/dt={partition_date}/data.json"
@@ -86,6 +150,8 @@ def land_to_onelake(rows, source, table, partition_date):
 
     content = "\n".join([json.dumps(row, default=str) for row in rows])
     file_client.upload_data(content, overwrite=True)
+
+    print(f"[ONELAKE] {path}  ({len(rows)} rows)")
 
 
 # =========================
